@@ -62,6 +62,16 @@ def links(e,cls=''):
     if e.get('ap'):out.append(f'<a href="{e["ap"]}" rel="noopener">Apple Podcasts ↗</a>')
     if e.get('yt'):out.append(f'<a href="{e["yt"]}" rel="noopener">YouTube ↗</a>')
     return out
+def secs(t):
+    p=[int(x) for x in t.split(':')]
+    r=0
+    for x in p: r=r*60+x
+    return r
+def chap_html(e):
+    ch=e.get('ch')
+    if not ch or not e.get('yt'): return ''
+    rows=''.join(f'<li style="border-bottom:1px solid #111;padding:10px 0;display:grid;grid-template-columns:90px minmax(0,1fr);gap:12px"><a class="mono" href="{e["yt"]}&amp;t={secs(t)}s" rel="noopener" style="text-decoration:none">{t}</a><span>{esc(ti)}</span></li>' for t,ti in ch)
+    return f'<section aria-label="Capítulos del episodio" style="margin-top:48px"><h2 class="mono" style="font-weight:700;margin:0 0 12px">Capítulos</h2><p style="font-size:14px;color:#555;margin:0 0 8px">Cada minuto abre el episodio en YouTube en ese momento.</p><ol style="list-style:none;margin:0;padding:0;border-top:1px solid #111">{rows}</ol></section>'
 # episode pages
 for i,e in enumerate(eps):
     n=e['n']; tag='Tráiler' if n=='trailer' else ('Bono' if n.startswith('bono') else f'Episodio {n.lstrip("0") if n[0].isdigit() and "-" not in n else n}')
@@ -77,8 +87,8 @@ for i,e in enumerate(eps):
 <h1 style="font-size:clamp(30px,5vw,44px);font-weight:700;line-height:1.12;letter-spacing:-1px;margin:28px 0 24px">{esc(e["h"])}</h1>
 <dl style="margin:0;border-top:1px solid #111"><div style="display:grid;grid-template-columns:140px minmax(0,1fr);gap:12px;padding:12px 0;border-bottom:1px solid #111"><dt class="mono" style="color:#555">Publicado</dt><dd style="margin:0"><time datetime="{iso(e["d"])}">{e["d"]}</time></dd></div><div style="display:grid;grid-template-columns:140px minmax(0,1fr);gap:12px;padding:12px 0;border-bottom:1px solid #111"><dt class="mono" style="color:#555">Duración</dt><dd style="margin:0">{e["u"]}</dd></div><div style="display:grid;grid-template-columns:140px minmax(0,1fr);gap:12px;padding:12px 0;border-bottom:1px solid #111"><dt class="mono" style="color:#555">Programa</dt><dd style="margin:0"><a href="/">GRITones con Braulio Filoteo</a>, historias de reinvención, resiliencia y momentos de cambio</dd></div></dl>
 <div style="display:flex;flex-wrap:wrap;gap:12px;margin-top:32px">{btns}</div>
-<nav aria-label="Episodios cercanos" class="mono" style="display:flex;flex-direction:column;gap:12px;margin-top:56px;font-size:12px">{nav}</nav></div></article>'''
-    ld={"@context":"https://schema.org","@graph":[SERIES,{"@type":"PodcastEpisode","name":e["h"],"url":BASE+path,"datePublished":iso(e["d"]),"timeRequired":dur(e["u"]),"inLanguage":"es","partOfSeries":{"@id":BASE+"/#podcast"},"author":{"@type":"Person","name":"Braulio Filoteo"},"sameAs":[e[x] for x in ('sp','ap','yt') if e.get(x)]},
+{chap_html(e)}<nav aria-label="Episodios cercanos" class="mono" style="display:flex;flex-direction:column;gap:12px;margin-top:56px;font-size:12px">{nav}</nav></div></article>'''
+    ld={"@context":"https://schema.org","@graph":[SERIES,{"@type":"PodcastEpisode","name":e["h"],"url":BASE+path,"datePublished":iso(e["d"]),"timeRequired":dur(e["u"]),"inLanguage":"es","partOfSeries":{"@id":BASE+"/#podcast"},"author":{"@type":"Person","name":"Braulio Filoteo"},"sameAs":[e[x] for x in ('sp','ap','yt') if e.get(x)],**({"hasPart":[{"@type":"Clip","name":ti,"startOffset":secs(t),"url":f'{e["yt"]}&t={secs(t)}s'} for t,ti in e["ch"]]} if e.get("ch") and e.get("yt") else {})},
       {"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"GRITones Podcast","item":BASE+"/"},{"@type":"ListItem","position":2,"name":e["h"],"item":BASE+path}]}]}
     d=f'{OUT}{path}';os.makedirs(d,exist_ok=True);open(d+'/index.html','w').write(page(title,desc,path,body,ld,'article'))
 # home
