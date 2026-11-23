@@ -35,7 +35,7 @@ def libsyn_items(xml_bytes):
     for it in root.iter('item'):
         title=(it.findtext('title') or '').strip()
         ep=(it.findtext(ITUNES+'episode') or '').strip()
-        n=f'{int(ep):03d}' if ep.isdigit() else num_from(title)
+        n=num_from(title) or (f'{int(ep):03d}' if ep.isdigit() else None)
         dt=parsedate_to_datetime(it.findtext('pubDate')).astimezone(TZ)
         out.append({'n':n,'raw':title,'h':clean_title(title),'d':dt.strftime('%d.%m.%Y'),'y':str(dt.year),'u':norm_dur(it.findtext(ITUNES+'duration'))})
     return out
