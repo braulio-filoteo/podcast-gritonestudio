@@ -17,11 +17,11 @@ def get(url,headers=None):
     req=urllib.request.Request(url,headers=headers or {'User-Agent':'gritones-site-updater'})
     return urllib.request.urlopen(req,timeout=30).read()
 def num_from(text):
-    m=re.search(r'#\s*0*(\d{1,3})\b',text) or re.search(r'[Ee]pisodio\s*#?\s*0*(\d{1,3})\b',text)
-    return f'{int(m.group(1)):03d}' if m else None
+    m=re.search(r'#\s*0*(\d{1,3})(?:-(\d))?\b',text) or re.search(r'[Ee]pisodio\s*#?\s*0*(\d{1,3})(?:-(\d))?\b',text)
+    return (f'{int(m.group(1)):03d}'+(f'-{m.group(2)}' if m.group(2) else '')) if m else None
 def clean_title(t):
     t=re.sub(r'^[^\w#]+','',t).strip()
-    t=re.sub(r'^(Episodio\s*)?#?\s*\d{1,3}\s*[:.\-–—]\s*','',t,flags=re.I).strip()
+    t=re.sub(r'^(Episodio\s*)?#?\s*\d{1,3}(-\d)?\s*[:.\-–—]\s*','',t,flags=re.I).strip()
     return t
 def norm_dur(v):
     v=(v or '').strip()
@@ -88,7 +88,7 @@ def main():
         if it['n'] is None:
             notes.append(f'Sin número reconocible en el feed: «{it["raw"]}» (no se agregó)');continue
         if it['n'] in known:continue
-        if it['n'] in hold or str(int(it['n'])) in hold:
+        if it['n'] in hold or str(int(it['n'][:3])) in hold:
             notes.append(f'#{it["n"]} está en hold.json (no se publica hasta que lo quites)');continue
         if not it['u']:
             notes.append(f'#{it["n"]}: el feed no trae duración (no se agregó)');continue
@@ -101,6 +101,11 @@ def main():
     for e in eps[:12]:
         for k,src_d in (('yt',yt),('ap',ap),('sp',sp)):
             if not e.get(k) and e['n'] in src_d:e[k]=src_d[e['n']];notes.append(f'#{e["n"]}: se completó el enlace {k}')
+    if len(new)>3:
+        lista=', '.join('#'+e['n'] for e in new)
+        notes=[n for n in notes if ' agregado: ' not in n]
+        notes.append(f'ALTO: el feed trae {len(new)} episodios nuevos de golpe; por seguridad no se agregó ninguno. Revisa a mano: '+lista)
+        new=[]
     if new:
         new.sort(key=lambda e:(e['y'],e['d'].split('.')[1],e['d'].split('.')[0]),reverse=True)
         eps=new+eps
