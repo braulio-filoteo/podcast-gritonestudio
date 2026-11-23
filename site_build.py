@@ -1,9 +1,8 @@
 import re,json,html,unicodedata,os,shutil
-SRC='/home/claude/art/project/Main.dc.html'
-s=open(SRC).read()
-eps=json.loads(re.search(r'const all=(\[.*?\]);\n',s,re.S).group(1))
+HERE=os.path.dirname(os.path.abspath(__file__))
+eps=json.load(open(os.path.join(HERE,'episodes.json'),encoding='utf-8'))
 BASE='https://podcast.gritonestudio.com'
-OUT='/home/claude/site'
+OUT=os.environ.get('SITE_OUT',HERE)
 esc=html.escape
 for e in eps:
     e['n']=e['n'].lower()
