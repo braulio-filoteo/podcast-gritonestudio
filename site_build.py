@@ -72,6 +72,20 @@ def chap_html(e):
     if not ch or not e.get('yt'): return ''
     rows=''.join(f'<li style="border-bottom:1px solid #111;padding:10px 0;display:grid;grid-template-columns:90px minmax(0,1fr);gap:12px"><a class="mono" href="{e["yt"]}&amp;t={secs(t)}s" rel="noopener" style="text-decoration:none">{t}</a><span>{esc(ti)}</span></li>' for t,ti in ch)
     return f'<section aria-label="Capítulos del episodio" style="margin-top:48px"><h2 class="mono" style="font-weight:700;margin:0 0 12px">Capítulos</h2><p style="font-size:14px;color:#555;margin:0 0 8px">Cada minuto abre el episodio en YouTube en ese momento.</p><ol style="list-style:none;margin:0;padding:0;border-top:1px solid #111">{rows}</ol></section>'
+def resumen_html(e):
+    r=e.get('r')
+    if not r: return ''
+    H='font-weight:700;margin:0 0 12px'
+    h=''
+    if r.get('intro'):
+        h+=f'<section aria-label="Resumen del episodio" style="margin-top:48px"><h2 class="mono" style="{H}">Resumen del episodio</h2><p style="font-size:19px;line-height:1.6;margin:0">{esc(r["intro"])}</p></section>'
+    if r.get('qa'):
+        rows=''.join(f'<div style="border-top:1px solid #111;padding:20px 0"><h3 style="font-size:20px;font-weight:700;margin:0 0 8px">{esc(q)}</h3><p style="font-size:17px;line-height:1.55;color:#333;margin:0">{esc(a)}</p></div>' for q,a in r['qa'])
+        h+=f'<section aria-label="Preguntas que responde este episodio" style="margin-top:48px"><h2 class="mono" style="{H}">Preguntas que responde este episodio</h2><div style="border-bottom:1px solid #111">{rows}</div></section>'
+    if r.get('puntos'):
+        li=''.join(f'<li style="border-bottom:1px solid #111;padding:12px 0">{esc(x)}</li>' for x in r['puntos'])
+        h+=f'<section aria-label="Puntos clave" style="margin-top:48px"><h2 class="mono" style="{H}">Puntos clave</h2><ol style="margin:0;padding:0 0 0 22px;border-top:1px solid #111">{li}</ol></section>'
+    return h
 # episode pages
 for i,e in enumerate(eps):
     n=e['n']; tag='Tráiler' if n=='trailer' else ('Bono' if n.startswith('bono') else f'Episodio {n.lstrip("0") if n[0].isdigit() and "-" not in n else n}')
@@ -79,6 +93,7 @@ for i,e in enumerate(eps):
     short='Tráiler' if n=='trailer' else e['h']
     title=(f'{e["h"]} | GRITones #{n}' if n[0].isdigit() else f'{e["h"]} | GRITones')[:110]
     desc=f'{e["h"]}. {label} de GRITones con Braulio Filoteo ({e["u"]}, {e["d"]}). Escúchalo en Spotify, Apple Podcasts o YouTube.'
+    if e.get('r',{}).get('intro'): desc=(e['r']['intro'][:152].rsplit(' ',1)[0]+'...') if len(e['r']['intro'])>155 else e['r']['intro']
     path=f'/episodio/{e["slug"]}'
     prev=eps[i+1] if i+1<len(eps) else None; nxt=eps[i-1] if i>0 else None
     btns=''.join(f'<a class="btn {"pri" if k==0 else ""}" href="{h}" rel="noopener">{t} ↗</a>' for k,(h,t) in enumerate([(e[x],t) for x,t in (('sp','Escuchar en Spotify'),('ap','Apple Podcasts'),('yt','Ver en YouTube')) if e.get(x)]))
@@ -87,9 +102,10 @@ for i,e in enumerate(eps):
 <h1 style="font-size:clamp(30px,5vw,44px);font-weight:700;line-height:1.12;letter-spacing:-1px;margin:28px 0 24px">{esc(e["h"])}</h1>
 <dl style="margin:0;border-top:1px solid #111"><div style="display:grid;grid-template-columns:140px minmax(0,1fr);gap:12px;padding:12px 0;border-bottom:1px solid #111"><dt class="mono" style="color:#555">Publicado</dt><dd style="margin:0"><time datetime="{iso(e["d"])}">{e["d"]}</time></dd></div><div style="display:grid;grid-template-columns:140px minmax(0,1fr);gap:12px;padding:12px 0;border-bottom:1px solid #111"><dt class="mono" style="color:#555">Duración</dt><dd style="margin:0">{e["u"]}</dd></div><div style="display:grid;grid-template-columns:140px minmax(0,1fr);gap:12px;padding:12px 0;border-bottom:1px solid #111"><dt class="mono" style="color:#555">Programa</dt><dd style="margin:0"><a href="/">GRITones con Braulio Filoteo</a>, historias de reinvención, resiliencia y momentos de cambio</dd></div></dl>
 <div style="display:flex;flex-wrap:wrap;gap:12px;margin-top:32px">{btns}</div>
-{chap_html(e)}<nav aria-label="Episodios cercanos" class="mono" style="display:flex;flex-direction:column;gap:12px;margin-top:56px;font-size:12px">{nav}</nav></div></article>'''
-    ld={"@context":"https://schema.org","@graph":[SERIES,{"@type":"PodcastEpisode","name":e["h"],"url":BASE+path,"datePublished":iso(e["d"]),"timeRequired":dur(e["u"]),"inLanguage":"es","partOfSeries":{"@id":BASE+"/#podcast"},"author":{"@type":"Person","name":"Braulio Filoteo"},"sameAs":[e[x] for x in ('sp','ap','yt') if e.get(x)],**({"hasPart":[{"@type":"Clip","name":ti,"startOffset":secs(t),"url":f'{e["yt"]}&t={secs(t)}s'} for t,ti in e["ch"]]} if e.get("ch") and e.get("yt") else {})},
-      {"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"GRITones Podcast","item":BASE+"/"},{"@type":"ListItem","position":2,"name":e["h"],"item":BASE+path}]}]}
+{resumen_html(e)}{chap_html(e)}<nav aria-label="Episodios cercanos" class="mono" style="display:flex;flex-direction:column;gap:12px;margin-top:56px;font-size:12px">{nav}</nav></div></article>'''
+    ld={"@context":"https://schema.org","@graph":[SERIES,{"@type":"PodcastEpisode","name":e["h"],"url":BASE+path,"datePublished":iso(e["d"]),"timeRequired":dur(e["u"]),"inLanguage":"es","partOfSeries":{"@id":BASE+"/#podcast"},"author":{"@type":"Person","name":"Braulio Filoteo"},"sameAs":[e[x] for x in ('sp','ap','yt') if e.get(x)],**({"description":e["r"]["intro"]} if e.get("r",{}).get("intro") else {}),**({"hasPart":[{"@type":"Clip","name":ti,"startOffset":secs(t),"url":f'{e["yt"]}&t={secs(t)}s'} for t,ti in e["ch"]]} if e.get("ch") and e.get("yt") else {})},
+      {"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"GRITones Podcast","item":BASE+"/"},{"@type":"ListItem","position":2,"name":e["h"],"item":BASE+path}]},
+      *([{"@type":"FAQPage","mainEntity":[{"@type":"Question","name":q,"acceptedAnswer":{"@type":"Answer","text":a}} for q,a in e["r"]["qa"]]}] if e.get("r",{}).get("qa") else [])]}
     d=f'{OUT}{path}';os.makedirs(d,exist_ok=True);open(d+'/index.html','w').write(page(title,desc,path,body,ld,'article'))
 # home
 FAQ=[("¿De qué trata GRITones Podcast?","Son conversaciones con personas que transformaron sus momentos más difíciles en fuerza interior: historias de reinvención, resiliencia y momentos de cambio. Lo conduce Braulio Filoteo."),
